@@ -15,8 +15,8 @@ export interface Pair {
   quote: string;
 }
 
-export interface FlashloanConfig {
-  provider: 'navi' | 'suilend';
+export interface NaviFlashloanConfig {
+  provider: 'navi';
   /** NAVI package ID, e.g. testnet 0xc371fc618faca4671253811faef480903b86c58966e8f899184ebaa640120c64 */
   packageId: string;
   /**
@@ -54,6 +54,58 @@ export interface FlashloanConfig {
   repayFn: string;
 }
 
+/**
+ * DeepBookV3 flashloan configuration.
+ *
+ * DeepBookV3 charges NO direct loan fee — the borrow is enforced by a
+ * Move "hot potato" (FlashLoan struct with no abilities) that the
+ * transaction must consume via `return_flashloan_base` /
+ * `return_flashloan_quote` in the same PTB. This drops the required
+ * break-even spread from `navi_fee + dex_a + dex_b` to just
+ * `dex_a + dex_b`, which unlocks DEEP-paired cross-DEX arbs that
+ * would be unprofitable under NAVI's 5 bps surcharge.
+ *
+ * The borrowed asset is the BaseAsset of the chosen pool. For
+ * arb against DEXes that quote in DEEP, borrow the DEEP/USDC or
+ * DEEP/SUI pool and return the same `Coin<DEEP>` after the trade.
+ */
+export interface DeepbookFlashloanConfig {
+  provider: 'deepbook';
+  /**
+   * DeepBookV3 package ID. Mainnet V6 (Jan 2026):
+   * 0x337f4f4f6567fcd778d5454f27c16c70e2f274cc6377ea6249ddf491482ef497.
+   */
+  packageId: string;
+  /**
+   * DeepBookV3 registry ID. Mainnet:
+   * 0xaf16199a2dff736e9f07a845f23c5da6df6f756eddb631aed9d24a93efc4549d.
+   * Currently informational only; the registry's poolKey -> ID lookup
+   * is bypassed by passing the pool object directly.
+   */
+  registryId: string;
+  /**
+   * Pool object ID for the (BaseAsset, QuoteAsset) pair to borrow from.
+   * e.g. DEEP/USDC on mainnet: 0xf948981b806057580f91622417534f491da5f61aeaf33d0ed8e69fd5691c95ce.
+   * The DEEP/SUI pool: 0xb663828d6217467c8a1838a03793da896cbe745b150ebd57d82f814ca579fc22.
+   * Pass as a shared object to `deepbook::pool::borrow_flashloan_base`.
+   */
+  borrowPoolId: string;
+  /** Base asset coin type of the pool. The asset that gets borrowed. */
+  borrowBaseType: string;
+  /** Quote asset coin type of the pool. */
+  borrowQuoteType: string;
+}
+
+export type FlashloanConfig = NaviFlashloanConfig | DeepbookFlashloanConfig;
+
+export function isNaviFlashloan(c: FlashloanConfig): c is NaviFlashloanConfig {
+  return c.provider === 'navi';
+}
+
+export function isDeepbookFlashloan(c: FlashloanConfig): c is DeepbookFlashloanConfig {
+  return c.provider === 'deepbook';
+}
+
 export interface DexContractConfig {
   packageId: string;
   swapModule: string;
@@ -84,7 +136,7 @@ export interface Config {
 }
 
 const VALID_DEXES = ['cetus', 'turbos', 'aftermath'] as const;
-const VALID_FLASHLOAN_PROVIDERS = ['navi', 'suilend'] as const;
+const VALID_FLASHLOAN_PROVIDERS = ['navi', 'suilend', 'deepbook'] as const;
 
 export class ConfigError extends Error {
   constructor(message: string) {
@@ -178,18 +230,31 @@ export function loadConfig(configPath = 'config.json'): Config {
   if (typeof fl.provider !== 'string' || !VALID_FLASHLOAN_PROVIDERS.includes(fl.provider as (typeof VALID_FLASHLOAN_PROVIDERS)[number])) {
     throw new ConfigError(`Invalid flashloan.provider: ${String(fl.provider)}`);
   }
-  const flashloan: FlashloanConfig = {
-    provider: fl.provider as FlashloanConfig['provider'],
-    packageId: requireString(fl, 'packageId'),
-    configId: requireString(fl, 'configId'),
-    storageId: requireString(fl, 'storageId'),
-    suiSystemStateId: requireString(fl, 'suiSystemStateId'),
-    clockId: requireString(fl, 'clockId'),
-    borrowPoolId: requireString(fl, 'borrowPoolId'),
-    borrowCoinType: requireString(fl, 'borrowCoinType'),
-    borrowFn: requireString(fl, 'borrowFn'),
-    repayFn: requireString(fl, 'repayFn'),
-  };
+  let flashloan: FlashloanConfig;
+  if (fl.provider === 'deepbook') {
+    flashloan = {
+      provider: 'deepbook',
+      packageId: requireString(fl, 'packageId'),
+      registryId: requireString(fl, 'registryId'),
+      borrowPoolId: requireString(fl, 'borrowPoolId'),
+      borrowBaseType: requireString(fl, 'borrowBaseType'),
+      borrowQuoteType: requireString(fl, 'borrowQuoteType'),
+    };
+  } else {
+    // navi or suilend (same shape as NAVI v2)
+    flashloan = {
+      provider: fl.provider as 'navi',
+      packageId: requireString(fl, 'packageId'),
+      configId: requireString(fl, 'configId'),
+      storageId: requireString(fl, 'storageId'),
+      suiSystemStateId: requireString(fl, 'suiSystemStateId'),
+      clockId: requireString(fl, 'clockId'),
+      borrowPoolId: requireString(fl, 'borrowPoolId'),
+      borrowCoinType: requireString(fl, 'borrowCoinType'),
+      borrowFn: requireString(fl, 'borrowFn'),
+      repayFn: requireString(fl, 'repayFn'),
+    };
+  }
 
   // DEX contracts
   if (typeof cfg.dexContracts !== 'object' || cfg.dexContracts === null) {

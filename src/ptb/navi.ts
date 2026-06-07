@@ -21,7 +21,7 @@
 
 import { Transaction } from '@mysten/sui/transactions';
 import type { TransactionObjectArgument, TransactionResult } from '@mysten/sui/transactions';
-import type { FlashloanConfig } from '../config.js';
+import type { NaviFlashloanConfig } from '../config.js';
 
 export interface FlashloanBorrowResult {
   /** The borrowed coin (already wrapped from Balance via coin::from_balance). */
@@ -32,7 +32,7 @@ export interface FlashloanBorrowResult {
 
 export function borrowFlashloan(
   tx: Transaction,
-  config: FlashloanConfig,
+  config: NaviFlashloanConfig,
   sizeIn: bigint
 ): FlashloanBorrowResult {
   // NAVI's v2 context API takes 4 args. The Sui SDK's TransactionResult
@@ -68,7 +68,7 @@ export function borrowFlashloan(
 
 export function repayFlashloan(
   tx: Transaction,
-  config: FlashloanConfig,
+  config: NaviFlashloanConfig,
   receipt: TransactionResult,
   repayCoin: TransactionObjectArgument
 ): void {
