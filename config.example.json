@@ -1,0 +1,37 @@
+{
+  "rpcUrl": "https://fullnode.testnet.sui.io:443",
+  "privateKey": "<testnet-only-private-key-base64-or-suiprivkey-prefixed>",
+  "pairs": [
+    { "base": "SUI", "quote": "USDC" },
+    { "base": "DEEP", "quote": "USDC" }
+  ],
+  "dexes": ["cetus", "turbos", "aftermath"],
+  "thresholdBps": 50,
+  "maxSubmissions": 10,
+  "pollIntervalMs": 1000,
+  "liquidityCapFraction": 0.5,
+  "flashloan": {
+    "provider": "navi",
+    "packageId": "<NAVI flashloan package ID on testnet>",
+    "moduleName": "flashloan",
+    "borrowFn": "loan",
+    "repayFn": "repay"
+  },
+  "dexContracts": {
+    "cetus": {
+      "packageId": "<Cetus clmm package ID on testnet>",
+      "swapModule": "router",
+      "swapFn": "swap"
+    },
+    "turbos": {
+      "packageId": "<Turbos clmm package ID on testnet>",
+      "swapModule": "router",
+      "swapFn": "swap"
+    },
+    "aftermath": {
+      "packageId": "<Aftermath router package ID on testnet>",
+      "swapModule": "router",
+      "swapFn": "swap"
+    }
+  }
+}
