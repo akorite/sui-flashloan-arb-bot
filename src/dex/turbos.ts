@@ -5,7 +5,7 @@
  * package IDs in config.
  */
 
-import type { Transaction, TransactionResult } from '@mysten/sui/transactions';
+import type { TransactionResult } from '@mysten/sui/transactions';
 import type {
   DexClient,
   DexName,
@@ -17,6 +17,7 @@ import type {
 import { PairNotFoundError, DexRpcError } from './types.js';
 import type { DexContractConfig } from '../config.js';
 import { quoteConstantProduct } from './cetus.js';
+import { coinTypeFor, poolObjectIdFor } from './utils.js';
 
 export class TurbosClient implements DexClient {
   readonly name: DexName = 'turbos';
@@ -53,12 +54,4 @@ export class TurbosClient implements DexClient {
       typeArguments: [coinTypeFor(pair.base), coinTypeFor(pair.quote)],
     });
   }
-}
-
-function poolObjectIdFor(dex: DexName, pair: Pair): string {
-  return `pool-${dex}-${pair.base}-${pair.quote}`;
-}
-
-function coinTypeFor(symbol: string): string {
-  return `0x${symbol.toLowerCase()}::coin::COIN`;
 }

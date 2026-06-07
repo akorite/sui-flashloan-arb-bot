@@ -22,6 +22,7 @@
 
 import type { DexName, Pair, PoolState } from '../dex/types.js';
 import { quoteConstantProduct } from '../dex/cetus.js';
+import { min } from '../util/bigint.js';
 import type { Opportunity } from './opportunity.js';
 
 export interface DetectorInputs {
@@ -194,8 +195,4 @@ function geometricSample(min: bigint, max: bigint, idx: number, total: number): 
   }
   const sample = minF * Math.pow(maxF / minF, t);
   return BigInt(Math.max(1, Math.floor(sample)));
-}
-
-function min(a: bigint, b: bigint): bigint {
-  return a < b ? a : b;
 }

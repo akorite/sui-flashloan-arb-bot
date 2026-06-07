@@ -12,7 +12,7 @@
  * adapter does not hardcode testnet addresses.
  */
 
-import type { Transaction, TransactionResult } from '@mysten/sui/transactions';
+import type { TransactionResult } from '@mysten/sui/transactions';
 import type {
   DexClient,
   DexName,
@@ -23,6 +23,7 @@ import type {
 } from './types.js';
 import { PairNotFoundError, DexRpcError } from './types.js';
 import type { DexContractConfig } from '../config.js';
+import { coinTypeFor, poolObjectIdFor } from './utils.js';
 
 export class CetusClient implements DexClient {
   readonly name: DexName = 'cetus';
@@ -91,16 +92,4 @@ export function quoteConstantProduct(
   // price impact ≈ sizeIn / (reserveIn + sizeIn) (fraction of pool consumed)
   const impactBps = Number((sizeIn * 10000n) / (reserveIn + sizeIn));
   return { expectedOut, priceImpactBps: impactBps };
-}
-
-function poolObjectIdFor(dex: DexName, pair: Pair): string {
-  // Operator fills these in config.dexContracts[dex] and the caller
-  // passes the package ID; this stub is a placeholder kept for callers
-  // that want a hard reference. Real implementations look up the pool
-  // object ID from a registry indexed by (dex, pair).
-  return `pool-${dex}-${pair.base}-${pair.quote}`;
-}
-
-function coinTypeFor(symbol: string): string {
-  return `0x${symbol.toLowerCase()}::coin::COIN`;
 }
