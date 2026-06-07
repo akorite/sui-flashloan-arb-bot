@@ -50,7 +50,7 @@ export async function submitPtb({ tx, client, signer }: SubmitArgs): Promise<Sub
         digest: result.digest,
         gasUsed:
           BigInt(result.effects.gasUsed?.computationCost ?? '0') +
-          BigInt(result.effects.gasUsed?.storageCost ?? '0') +
+          BigInt(result.effects.gasUsed?.storageCost ?? '0') -
           BigInt(result.effects.gasUsed?.storageRebate ?? '0'),
       };
     }

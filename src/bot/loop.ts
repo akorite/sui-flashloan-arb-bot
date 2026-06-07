@@ -25,6 +25,7 @@ import { buildPtb } from '../ptb/builder.js';
 import type { Signer, SubmitResult } from '../ptb/submit.js';
 import { submitPtb } from '../ptb/submit.js';
 import type { SuiClient } from '@mysten/sui/client';
+import type { Transaction } from '@mysten/sui/transactions';
 import { SafetyCap } from './safety.js';
 import { liquidityOk } from './liquidity.js';
 
@@ -37,19 +38,22 @@ export interface RunBotDeps {
 }
 
 export async function runBot(config: Config, logger: Logger): Promise<void> {
-  // Lazily build the loop deps; the entry point passes them in.
-  // The function signature here is the production shape — the unit
-  // tests call the internal tick function directly.
   const deps = await loadDeps(config, logger);
   const cap = new SafetyCap(config.maxSubmissions);
   const tickLogger = logger.child({ component: 'loop' });
 
   while (cap.canSubmit()) {
     await runTick({ config, logger: tickLogger, cap, ...deps });
+    if (!cap.canSubmit()) break;
+    await sleep(config.pollIntervalMs);
   }
 
   tickLogger.info('cap_reached', { maxSubmissions: config.maxSubmissions });
-  tickLogger.info('shutdown', { reason: 'cap_reached' });
+  tickLogger.info('shutdown', { reason: 'cap_reached', source: 'loop' });
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 interface TickDeps {
@@ -156,15 +160,33 @@ interface ExecuteDeps {
 async function executeOpportunity(deps: ExecuteDeps): Promise<void> {
   const { opp, config, logger, cap, suiClient, signer, dexClients } = deps;
 
-  const tx = buildPtb({ opportunity: opp, config, dexClients });
-  logger.info('ptb_submitted', {
+  let tx: Transaction;
+  try {
+    tx = buildPtb({ opportunity: opp, config, dexClients });
+  } catch (err) {
+    logger.error('ptb_build_error', {
+      pair: `${opp.pair.base}/${opp.pair.quote}`,
+      buyDex: opp.buyDex,
+      sellDex: opp.sellDex,
+      error: (err as Error).message,
+    });
+    cap.recordAttempt();
+    return;
+  }
+
+  logger.info('ptb_built', {
     pair: `${opp.pair.base}/${opp.pair.quote}`,
     buyDex: opp.buyDex,
     sellDex: opp.sellDex,
     sizeIn: opp.sizeIn.toString(),
   });
 
-  const result = await submitPtb({ tx, client: suiClient, signer });
+  let result: SubmitResult;
+  try {
+    result = await submitPtb({ tx, client: suiClient, signer });
+  } catch (err) {
+    result = { status: 'error', error: (err as Error).message };
+  }
   cap.recordAttempt();
   logResult(logger, opp, result);
 }

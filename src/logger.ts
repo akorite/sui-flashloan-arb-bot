@@ -20,6 +20,8 @@ export type LogEvent =
   | 'opportunity_detected'
   | 'below_threshold'
   | 'liquidity_cap'
+  | 'ptb_built'
+  | 'ptb_build_error'
   | 'ptb_submitted'
   | 'ptb_success'
   | 'ptb_revert'

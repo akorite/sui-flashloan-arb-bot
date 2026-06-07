@@ -7,7 +7,7 @@
  * about what runs at startup.
  */
 
-import { loadConfig, ConfigError } from './config.js';
+import { loadConfig } from './config.js';
 import { createLogger } from './logger.js';
 import { runBot } from './bot/loop.js';
 
@@ -17,11 +17,7 @@ async function main(): Promise<void> {
   try {
     config = loadConfig();
   } catch (err) {
-    if (err instanceof ConfigError) {
-      logger.error('config_error', { message: err.message });
-    } else {
-      logger.error('config_error', { message: (err as Error).message });
-    }
+    logger.error('config_error', { message: (err as Error).message });
     process.exit(1);
   }
 
@@ -34,12 +30,24 @@ async function main(): Promise<void> {
     pollIntervalMs: config.pollIntervalMs,
   });
 
+  installSignalHandlers(logger);
+
   try {
     await runBot(config, logger);
   } catch (err) {
-    logger.error('shutdown', { message: (err as Error).message });
+    logger.error('shutdown', { reason: 'unhandled_error', message: (err as Error).message });
     process.exit(1);
   }
+  logger.info('shutdown', { reason: 'loop_returned' });
+}
+
+function installSignalHandlers(logger: ReturnType<typeof createLogger>): void {
+  const handler = (sig: NodeJS.Signals) => {
+    logger.info('shutdown', { reason: 'signal', signal: sig });
+    process.exit(0);
+  };
+  process.on('SIGINT', handler);
+  process.on('SIGTERM', handler);
 }
 
 main();

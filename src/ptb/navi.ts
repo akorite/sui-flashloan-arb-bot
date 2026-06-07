@@ -56,3 +56,8 @@ export function repayFlashloan(
 function coinTypeFor(symbol: string): string {
   return `0x${symbol.toLowerCase()}::coin::COIN`;
 }
+
+// PLACEHOLDER: the helpers in `src/dex/utils.ts` and the local one above
+// return synthesized strings, not real Sui coin types. The real type
+// registry (e.g. 0x2::sui::SUI) must be wired before the bot is run on
+// testnet. Tracked as akorite/sui-flashloan-arb-bot issue #2.
