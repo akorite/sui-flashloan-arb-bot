@@ -16,6 +16,8 @@ export type LogEvent =
   | 'startup'
   | 'shutdown'
   | 'config_error'
+  | 'wire_error'
+  | 'wired'
   | 'poll_cycle'
   | 'opportunity_detected'
   | 'below_threshold'

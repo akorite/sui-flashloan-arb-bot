@@ -17,9 +17,40 @@ export interface Pair {
 
 export interface FlashloanConfig {
   provider: 'navi' | 'suilend';
+  /** NAVI package ID, e.g. testnet 0xc371fc618faca4671253811faef480903b86c58966e8f899184ebaa640120c64 */
   packageId: string;
-  moduleName: string;
+  /**
+   * NAVI flashloanConfig shared object ID, e.g. testnet
+   * 0x071e0587c9a9e9238ee52c8d482876fd7ef3fff9041ffd7b21d32d89d06f2922.
+   * This is the `Config` shared object passed as the first argument to
+   * `lending::flash_loan_with_ctx_v2`.
+   */
+  configId: string;
+  /**
+   * NAVI storage shared object ID, e.g. testnet
+   * 0x111b9d70174462646e7e47e6fec5da9eb50cea14e6c5a55a910c8b0e44cd2913.
+   * Required for `lending::flash_repay_with_ctx`.
+   */
+  storageId: string;
+  /**
+   * SuiSystemState shared object ID. Hardcoded to 0x6 on every network;
+   * kept in config for clarity.
+   */
+  suiSystemStateId: string;
+  /** Clock shared object ID. Hardcoded to 0x6 on every network. */
+  clockId: string;
+  /**
+   * The NAVI lending pool object ID for the asset you intend to borrow.
+   * For SUI on testnet: 0x68b420259e3adcdadf165350984f59dfdaf677c3d639aaa54c1d907dae2dd1a3.
+   * For USDC on testnet: 0x8bf81e96302d4307d8da07e49328875e1f2e205dc0c4d457bffe6a8c1740ba25.
+   * The pool object ID is paired with `borrowCoinType` below.
+   */
+  borrowPoolId: string;
+  /** Coin type to borrow, e.g. SUI = "0x2::sui::SUI". */
+  borrowCoinType: string;
+  /** Borrow function name. NAVI's is `flash_loan_with_ctx_v2`. */
   borrowFn: string;
+  /** Repay function name. NAVI's is `flash_repay_with_ctx`. */
   repayFn: string;
 }
 
@@ -150,7 +181,12 @@ export function loadConfig(configPath = 'config.json'): Config {
   const flashloan: FlashloanConfig = {
     provider: fl.provider as FlashloanConfig['provider'],
     packageId: requireString(fl, 'packageId'),
-    moduleName: requireString(fl, 'moduleName'),
+    configId: requireString(fl, 'configId'),
+    storageId: requireString(fl, 'storageId'),
+    suiSystemStateId: requireString(fl, 'suiSystemStateId'),
+    clockId: requireString(fl, 'clockId'),
+    borrowPoolId: requireString(fl, 'borrowPoolId'),
+    borrowCoinType: requireString(fl, 'borrowCoinType'),
     borrowFn: requireString(fl, 'borrowFn'),
     repayFn: requireString(fl, 'repayFn'),
   };

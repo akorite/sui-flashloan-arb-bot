@@ -23,9 +23,14 @@ const baseConfig: Config = {
   flashloan: {
     provider: 'navi',
     packageId: '0xnavi',
-    moduleName: 'flashloan',
-    borrowFn: 'loan',
-    repayFn: 'repay',
+    configId: '0xnavi-cfg',
+    storageId: '0xnavi-storage',
+    suiSystemStateId: '0x5',
+    clockId: '0x6',
+    borrowPoolId: '0xnavi-sui-pool',
+    borrowCoinType: '0x2::sui::SUI',
+    borrowFn: 'flash_loan_with_ctx_v2',
+    repayFn: 'flash_repay_with_ctx',
   },
   dexContracts: {
     cetus: { packageId: '0xcetus', swapModule: 'router', swapFn: 'swap' },

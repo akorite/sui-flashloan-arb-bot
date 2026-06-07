@@ -1,23 +1,30 @@
 /**
  * NAVI flashloan integration.
  *
- * Wraps NAVI's flashloan module as a typed helper. The actual function
- * signature depends on the current NAVI contract; the package ID,
- * module name, and function names are config-driven so the bot does not
- * hardcode testnet addresses.
+ * Calls NAVI's lending module on SUI testnet. The function names and
+ * shared object IDs are config-driven.
  *
- * Architectural note: NAVI's flashloan uses a "receipt" hot potato that
- * must be consumed in the same PTB by either repayment or settlement.
- * This is the architectural anchor of R4 — if the receipt is not
- * consumed, the PTB is invalid by Sui's PTB type system.
+ * NAVI's PTB flow (lending module, v2 context API):
+ *   1. `lending::flash_loan_with_ctx_v2(config, pool, amount, sui_system)`
+ *      returns a tuple (Balance<T>, Receipt).
+ *   2. The Balance<T> must be converted to Coin<T> via `coin::from_balance`
+ *      and split/swapped through the user-provided path. The Receipt is
+ *      a hot potato that must be consumed by step 3 in the same PTB.
+ *   3. `lending::flash_repay_with_ctx(clock, storage, pool, receipt, balance)`
+ *      consumes the Receipt and returns the leftover balance.
+ *
+ * The repaying balance must be at least
+ *   loan_amount + supplier_fee + treasury_fee
+ * which the bot calculates from NAVI's published FlashLoanAsset config
+ * (see scripts/discover.ts).
  */
 
-import type { Transaction, TransactionObjectArgument, TransactionResult } from '@mysten/sui/transactions';
+import { Transaction } from '@mysten/sui/transactions';
+import type { TransactionObjectArgument, TransactionResult } from '@mysten/sui/transactions';
 import type { FlashloanConfig } from '../config.js';
-import type { Pair } from '../dex/types.js';
 
 export interface FlashloanBorrowResult {
-  /** The borrowed coin, to be passed into the first swap. */
+  /** The borrowed coin (already wrapped from Balance via coin::from_balance). */
   coin: TransactionObjectArgument;
   /** The receipt that must be consumed before the PTB ends. */
   receipt: TransactionResult;
@@ -26,42 +33,57 @@ export interface FlashloanBorrowResult {
 export function borrowFlashloan(
   tx: Transaction,
   config: FlashloanConfig,
-  pair: Pair,
   sizeIn: bigint
 ): FlashloanBorrowResult {
-  // The Sui SDK's TransactionResult is a Proxy that supports tuple-like
-  // destructuring at runtime, but the static type is a single Result
-  // intersected with an array of NestedResult. We index it directly to
-  // avoid the lossy `as unknown as [...]` double cast.
+  // NAVI's v2 context API takes 4 args. The Sui SDK's TransactionResult
+  // is a Proxy that supports tuple-like destructuring at runtime, but
+  // the static type is a single Result intersected with an array of
+  // NestedResult. We index it directly to avoid the lossy
+  // `as unknown as [...]` double cast.
   const result = tx.moveCall({
-    target: `${config.packageId}::${config.moduleName}::${config.borrowFn}`,
-    arguments: [tx.pure.u64(sizeIn)],
-    typeArguments: [coinTypeFor(pair.quote)],
+    target: `${config.packageId}::lending::${config.borrowFn}`,
+    arguments: [
+      tx.object(config.configId),
+      tx.object(config.borrowPoolId),
+      tx.pure.u64(sizeIn),
+      tx.object(config.suiSystemStateId),
+    ],
+    typeArguments: [config.borrowCoinType],
   });
-  const coin = result[0] as TransactionObjectArgument;
+  const balance = result[0] as TransactionObjectArgument;
+  // Wrap the Balance<T> into a Coin<T> so the swap path can consume it.
+  const coin = tx.moveCall({
+    target: '0x2::coin::from_balance',
+    arguments: [balance],
+    typeArguments: [config.borrowCoinType],
+  });
   return { coin, receipt: result };
 }
 
 export function repayFlashloan(
   tx: Transaction,
   config: FlashloanConfig,
-  pair: Pair,
-  coin: TransactionObjectArgument,
   receipt: TransactionResult,
-  amount: bigint
+  repayCoin: TransactionObjectArgument
 ): void {
+  // The last moveCall argument is the Balance<T> that NAVI will consume.
+  // We extract a Balance from the repay coin via coin::into_balance so
+  // we don't need to know its value; NAVI asserts the balance is at
+  // least loan + supplier_fee + treasury_fee and returns any surplus.
+  const repayBalance = tx.moveCall({
+    target: '0x2::coin::into_balance',
+    arguments: [repayCoin],
+    typeArguments: [config.borrowCoinType],
+  });
   tx.moveCall({
-    target: `${config.packageId}::${config.moduleName}::${config.repayFn}`,
-    arguments: [coin, receipt, tx.pure.u64(amount)],
-    typeArguments: [coinTypeFor(pair.quote)],
+    target: `${config.packageId}::lending::${config.repayFn}`,
+    arguments: [
+      tx.object(config.clockId),
+      tx.object(config.storageId),
+      tx.object(config.borrowPoolId),
+      receipt,
+      repayBalance,
+    ],
+    typeArguments: [config.borrowCoinType],
   });
 }
-
-function coinTypeFor(symbol: string): string {
-  return `0x${symbol.toLowerCase()}::coin::COIN`;
-}
-
-// PLACEHOLDER: the helpers in `src/dex/utils.ts` and the local one above
-// return synthesized strings, not real Sui coin types. The real type
-// registry (e.g. 0x2::sui::SUI) must be wired before the bot is run on
-// testnet. Tracked as akorite/sui-flashloan-arb-bot issue #2.

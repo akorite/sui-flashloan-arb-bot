@@ -1,23 +1,27 @@
 {
   "rpcUrl": "https://fullnode.testnet.sui.io:443",
-  "privateKey": "<testnet-only-private-key-base64-or-suiprivkey-prefixed>",
+  "privateKey": "env:SUI_PRIVATE_KEY",
   "pairs": [
-    { "base": "SUI", "quote": "USDC" },
-    { "base": "DEEP", "quote": "USDC" }
+    { "base": "SUI", "quote": "USDC" }
   ],
   "dexes": ["cetus", "turbos", "aftermath"],
   "thresholdBps": 50,
-  "maxSubmissions": 10,
+  "maxSubmissions": 5,
   "pollIntervalMs": 1000,
   "liquidityCapFraction": 0.5,
   "estimatedGasQuote": "1000000",
-  "flashloanFeeBps": 9,
+  "flashloanFeeBps": 5,
   "flashloan": {
     "provider": "navi",
-    "packageId": "<NAVI flashloan package ID on testnet>",
-    "moduleName": "flashloan",
-    "borrowFn": "loan",
-    "repayFn": "repay"
+    "packageId": "0xc371fc618faca4671253811faef480903b86c58966e8f899184ebaa640120c64",
+    "configId": "0x071e0587c9a9e9238ee52c8d482876fd7ef3fff9041ffd7b21d32d89d06f2922",
+    "storageId": "0x111b9d70174462646e7e47e6fec5da9eb50cea14e6c5a55a910c8b0e44cd2913",
+    "suiSystemStateId": "0x5",
+    "clockId": "0x6",
+    "borrowPoolId": "0x68b420259e3adcdadf165350984f59dfdaf677c3d639aaa54c1d907dae2dd1a3",
+    "borrowCoinType": "0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI",
+    "borrowFn": "flash_loan_with_ctx_v2",
+    "repayFn": "flash_repay_with_ctx"
   },
   "dexContracts": {
     "cetus": {

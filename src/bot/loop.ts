@@ -28,6 +28,7 @@ import type { SuiClient } from '@mysten/sui/client';
 import type { Transaction } from '@mysten/sui/transactions';
 import { SafetyCap } from './safety.js';
 import { liquidityOk } from './liquidity.js';
+import { wireProduction } from '../deps/wire.js';
 
 export interface RunBotDeps {
   suiClient: SuiClient;
@@ -227,18 +228,37 @@ interface LoadDepsResult {
  * the actual RPC-backed state fetcher are wired here. In tests, the
  * orchestrator injects fakes via runTick directly.
  */
-async function loadDeps(_config: Config, _logger: Logger): Promise<LoadDepsResult> {
-  // The wiring of the SuiClient and signer is intentionally left as a
-  // deferred implementation item — it requires:
-  //   - the @mysten/sui SuiClient with config.rpcUrl
-  //   - a signer that loads config.privateKey and exposes
-  //     signTransaction + getAddress
-  //   - an RPC-backed pollState that reads pool objects
-  // These are not part of the bot's logic; they are infrastructure
-  // adapters. The build will fail-fast at runtime if they are not
-  // wired correctly, and the unit tests exercise the loop with fakes
-  // via runTick.
-  throw new Error(
-    'runBot is not yet wired to a live SuiClient. Use runTick directly with injected deps in tests; wire the production client before running on testnet.'
-  );
+async function loadDeps(config: Config, logger: Logger): Promise<LoadDepsResult> {
+  let client: SuiClient;
+  let signer: Signer;
+  try {
+    const wired = wireProduction(config);
+    client = wired.client;
+    signer = wired.signer;
+  } catch (err) {
+    logger.error('wire_error', { error: (err as Error).message });
+    throw err;
+  }
+
+  const address = signer.getAddress();
+  logger.info('wired', {
+    rpcUrl: config.rpcUrl,
+    address,
+  });
+
+  // The default pollState asks each DexClient to read pool state from
+  // the live RPC. Until the DEX adapters implement real pool reads,
+  // the call returns null and the detector will see fewer than 2
+  // DEXes per pair — the bot will log "fewer than 2 DEXes returned
+  // state" on every tick. This is the expected behavior for the
+  // initial testnet run; it confirms the client + signer work and
+  // that the loop is alive.
+  const pollState = async (_dex: DexName, _pair: Pair): Promise<PoolState | null> => null;
+
+  return {
+    suiClient: client,
+    signer,
+    dexClients: {},
+    pollState,
+  };
 }

@@ -51,7 +51,6 @@ export function buildPtb({ opportunity, config, dexClients }: BuildArgs): Transa
   const { coin: borrowedCoin, receipt } = borrowFlashloan(
     tx,
     config.flashloan,
-    opportunity.pair,
     opportunity.sizeIn
   );
 
@@ -74,15 +73,11 @@ export function buildPtb({ opportunity, config, dexClients }: BuildArgs): Transa
   const repayCoin = sellClient.buildSwapCall(sellArgs);
 
   // Step 4: repay the flashloan
-  const repayAmount = opportunity.sizeIn + opportunity.flashloanFee;
-  repayFlashloan(
-    tx,
-    config.flashloan,
-    opportunity.pair,
-    repayCoin,
-    receipt,
-    repayAmount
-  );
+  // NAVI asserts the repay balance is at least sizeIn + supplier_fee +
+  // treasury_fee. The detector's net-spread math already accounts for
+  // the fee (config.flashloanFeeBps), so we trust the opportunity
+  // to be profitable and pass the full sell-output balance.
+  repayFlashloan(tx, config.flashloan, receipt, repayCoin);
 
   return tx;
 }
