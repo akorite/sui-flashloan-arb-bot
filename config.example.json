@@ -1,0 +1,39 @@
+{
+  "rpcUrl": "https://fullnode.mainnet.sui.io:443",
+  "privateKey": "env:SUI_PRIVATE_KEY",
+  "pairs": [
+    { "base": "DEEP", "quote": "USDC" }
+  ],
+  "dexes": ["cetus", "turbos", "aftermath"],
+  "thresholdBps": 30,
+  "maxSubmissions": 5,
+  "pollIntervalMs": 1000,
+  "liquidityCapFraction": 0.5,
+  "estimatedGasQuote": "1000000",
+  "flashloanFeeBps": 0,
+  "flashloan": {
+    "provider": "deepbook",
+    "packageId": "0x337f4f4f6567fcd778d5454f27c16c70e2f274cc6377ea6249ddf491482ef497",
+    "registryId": "0xaf16199a2dff736e9f07a845f23c5da6df6f756eddb631aed9d24a93efc4549d",
+    "borrowPoolId": "0xf948981b806057580f91622417534f491da5f61aeaf33d0ed8e69fd5691c95ce",
+    "borrowBaseType": "0xdeeb7a4662eec9f2f3def03fb937a663dddaa2e215b8078a284d026b7946c270::deep::DEEP",
+    "borrowQuoteType": "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC"
+  },
+  "dexContracts": {
+    "cetus": {
+      "packageId": "<Cetus clmm package ID on testnet>",
+      "swapModule": "router",
+      "swapFn": "swap"
+    },
+    "turbos": {
+      "packageId": "<Turbos clmm package ID on testnet>",
+      "swapModule": "router",
+      "swapFn": "swap"
+    },
+    "aftermath": {
+      "packageId": "<Aftermath router package ID on testnet>",
+      "swapModule": "router",
+      "swapFn": "swap"
+    }
+  }
+}
