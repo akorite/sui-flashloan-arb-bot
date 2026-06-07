@@ -18,6 +18,8 @@ const baseConfig: Config = {
   maxSubmissions: 5,
   pollIntervalMs: 1000,
   liquidityCapFraction: 0.5,
+  estimatedGasQuote: '1000000',
+  flashloanFeeBps: 9,
   flashloan: {
     provider: 'navi',
     packageId: '0xnavi',
@@ -48,7 +50,6 @@ const opportunity: Opportunity = {
     buy: { pair: PAIR, reserveBase: 0n, reserveQuote: 0n, price: 0n, readAt: 0 },
     sell: { pair: PAIR, reserveBase: 0n, reserveQuote: 0n, price: 0n, readAt: 0 },
   },
-  computedAt: 0,
 };
 
 // Use a fresh Transaction per call to produce a real

@@ -75,9 +75,14 @@ export async function runTick(deps: TickDeps): Promise<void> {
   for (const pair of config.pairs) {
     if (!cap.canSubmit()) break;
 
+    const settled = await Promise.all(
+      config.dexes.map(async (dexName) => {
+        const state = await pollState(dexName, pair);
+        return [dexName, state] as const;
+      })
+    );
     const states = new Map<DexName, PoolState>();
-    for (const dexName of config.dexes) {
-      const state = await pollState(dexName, pair);
+    for (const [dexName, state] of settled) {
       if (state) states.set(dexName, state);
     }
 
@@ -94,8 +99,8 @@ export async function runTick(deps: TickDeps): Promise<void> {
       pair,
       states,
       liquidityCapFraction: config.liquidityCapFraction,
-      estimatedGas: 0n,
-      flashloanFee: 0n,
+      estimatedGas: BigInt(config.estimatedGasQuote),
+      flashloanFeeBps: config.flashloanFeeBps,
     });
 
     if (!opp) {

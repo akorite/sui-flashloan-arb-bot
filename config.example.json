@@ -10,6 +10,8 @@
   "maxSubmissions": 10,
   "pollIntervalMs": 1000,
   "liquidityCapFraction": 0.5,
+  "estimatedGasQuote": "1000000",
+  "flashloanFeeBps": 9,
   "flashloan": {
     "provider": "navi",
     "packageId": "<NAVI flashloan package ID on testnet>",

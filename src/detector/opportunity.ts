@@ -31,6 +31,4 @@ export interface Opportunity {
   netSpreadBps: number;
   /** Pool state snapshots used to compute the opportunity — carried for the liquidity cap check. */
   states: { buy: PoolState; sell: PoolState };
-  /** When the opportunity was computed. */
-  computedAt: number;
 }

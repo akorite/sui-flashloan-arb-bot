@@ -47,7 +47,7 @@ describe('findOpportunity', () => {
       pair: PAIR,
       states,
       liquidityCapFraction: 0.1,
-      flashloanFee: 0n,
+      flashloanFeeBps: 0,
       estimatedGas: 0n,
     });
     expect(result).not.toBeNull();
@@ -65,7 +65,7 @@ describe('findOpportunity', () => {
       pair: PAIR,
       states,
       liquidityCapFraction: 0.1,
-      flashloanFee: 0n,
+      flashloanFeeBps: 0,
       estimatedGas: 0n,
     });
     expect(result).not.toBeNull();
@@ -85,5 +85,25 @@ describe('findOpportunity', () => {
       minSizeIn: 100_000n,
     });
     expect(result).toBeNull();
+  });
+
+  it('subtracts flashloan fee and gas from net spread', () => {
+    // Cetus 2.0 vs Turbos 3.0, 1M depth each, cap 0.1
+    const states = new Map<DexName, PoolState>([
+      ['cetus', state('cetus', 2, 1_000_000n)],
+      ['turbos', state('turbos', 3, 1_000_000n)],
+    ]);
+    // 50 bps flashloan fee + 10 quote gas (~1 bps at this depth) -> net
+    // should be positive but visibly less than gross
+    const result = findOpportunity({
+      pair: PAIR,
+      states,
+      liquidityCapFraction: 0.1,
+      flashloanFeeBps: 50,
+      estimatedGas: 10n,
+    });
+    expect(result).not.toBeNull();
+    expect(result!.netSpreadBps).toBeLessThan(result!.grossSpreadBps);
+    expect(result!.netSpreadBps).toBeGreaterThan(0);
   });
 });

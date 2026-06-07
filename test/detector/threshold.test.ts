@@ -21,7 +21,6 @@ function opp(netSpreadBps: number): Opportunity {
       buy: { pair: PAIR, reserveBase: 0n, reserveQuote: 0n, price: 0n, readAt: 0 },
       sell: { pair: PAIR, reserveBase: 0n, reserveQuote: 0n, price: 0n, readAt: 0 },
     },
-    computedAt: 0,
   };
 }
 

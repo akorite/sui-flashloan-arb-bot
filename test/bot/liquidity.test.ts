@@ -21,7 +21,6 @@ function opp(sizeIn: bigint, buyReserves: bigint, sellReserves: bigint): Opportu
     flashloanFee: 0n,
     netSpreadBps: 100,
     states: { buy, sell },
-    computedAt: 0,
   };
 }
 

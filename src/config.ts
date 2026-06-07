@@ -44,6 +44,10 @@ export interface Config {
   maxSubmissions: number;
   pollIntervalMs: number;
   liquidityCapFraction: number;
+  /** Estimated gas cost per PTB, in quote units. Used by the detector to compute netSpreadBps. */
+  estimatedGasQuote: string;
+  /** Flashloan fee in basis points. 9 means 0.09%. Used by the detector to compute netSpreadBps. */
+  flashloanFeeBps: number;
   flashloan: FlashloanConfig;
   dexContracts: DexContracts;
 }
@@ -126,6 +130,14 @@ export function loadConfig(configPath = 'config.json'): Config {
   if (liquidityCapFraction <= 0 || liquidityCapFraction > 1) {
     throw new ConfigError('liquidityCapFraction must be in (0, 1]');
   }
+  const estimatedGasQuote = requireString(cfg, 'estimatedGasQuote');
+  if (!/^[0-9]+$/.test(estimatedGasQuote)) {
+    throw new ConfigError('estimatedGasQuote must be a non-negative integer string (bigint-serializable)');
+  }
+  const flashloanFeeBps = requireNumber(cfg, 'flashloanFeeBps');
+  if (flashloanFeeBps < 0 || flashloanFeeBps > 10000) {
+    throw new ConfigError('flashloanFeeBps must be in [0, 10000]');
+  }
 
   // Flashloan
   if (typeof cfg.flashloan !== 'object' || cfg.flashloan === null) {
@@ -163,6 +175,8 @@ export function loadConfig(configPath = 'config.json'): Config {
     maxSubmissions,
     pollIntervalMs,
     liquidityCapFraction,
+    estimatedGasQuote,
+    flashloanFeeBps,
     flashloan,
     dexContracts,
   };

@@ -29,13 +29,17 @@ export function borrowFlashloan(
   pair: Pair,
   sizeIn: bigint
 ): FlashloanBorrowResult {
+  // The Sui SDK's TransactionResult is a Proxy that supports tuple-like
+  // destructuring at runtime, but the static type is a single Result
+  // intersected with an array of NestedResult. We index it directly to
+  // avoid the lossy `as unknown as [...]` double cast.
   const result = tx.moveCall({
     target: `${config.packageId}::${config.moduleName}::${config.borrowFn}`,
     arguments: [tx.pure.u64(sizeIn)],
     typeArguments: [coinTypeFor(pair.quote)],
   });
-  const [coin, receipt] = result as unknown as [TransactionObjectArgument, TransactionResult];
-  return { coin, receipt };
+  const coin = result[0] as TransactionObjectArgument;
+  return { coin, receipt: result };
 }
 
 export function repayFlashloan(

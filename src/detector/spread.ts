@@ -32,10 +32,10 @@ export interface DetectorInputs {
   sizeSamples?: number;
   /** Minimum trade size in quote units. Defaults to 1_000n. */
   minSizeIn?: bigint;
-  /** Estimated gas in quote units. */
+  /** Estimated gas in quote units (absolute). */
   estimatedGas?: bigint;
-  /** Flashloan fee in quote units. */
-  flashloanFee?: bigint;
+  /** Flashloan fee in basis points (0-10000). 9 = 0.09%. Applied to each sample's sizeIn. */
+  flashloanFeeBps?: number;
   /** Liquidity cap fraction — same as config.liquidityCapFraction. */
   liquidityCapFraction: number;
 }
@@ -50,7 +50,7 @@ export function findOpportunity(inputs: DetectorInputs): Opportunity | null {
     sizeSamples = DEFAULT_SIZE_SAMPLES,
     minSizeIn = DEFAULT_MIN_SIZE_IN,
     estimatedGas = 0n,
-    flashloanFee = 0n,
+    flashloanFeeBps = 0,
     liquidityCapFraction,
   } = inputs;
 
@@ -81,7 +81,7 @@ export function findOpportunity(inputs: DetectorInputs): Opportunity | null {
         maxSizeIn: cap,
         samples: sizeSamples,
         estimatedGas,
-        flashloanFee,
+        flashloanFeeBps,
       });
       if (candidate && (best === null || candidate.netSpreadBps > best.netSpreadBps)) {
         best = candidate;
@@ -102,7 +102,7 @@ interface SearchArgs {
   maxSizeIn: bigint;
   samples: number;
   estimatedGas: bigint;
-  flashloanFee: bigint;
+  flashloanFeeBps: number;
 }
 
 function searchBestSize(args: SearchArgs): Opportunity | null {
@@ -133,7 +133,7 @@ function evaluateSize(args: EvaluateArgs): Opportunity | null {
     expensiveState,
     sizeIn,
     estimatedGas,
-    flashloanFee,
+    flashloanFeeBps,
   } = args;
 
   // Leg 1: put `sizeIn` quote into the cheap DEX, get base out.
@@ -161,8 +161,9 @@ function evaluateSize(args: EvaluateArgs): Opportunity | null {
 
   const slippageBps = cheapQuote.priceImpactBps + expensiveQuote.priceImpactBps;
   const estimatedGasBps = sizeIn === 0n ? 0 : Number((estimatedGas * 10_000n) / sizeIn);
-  const flashloanFeeBps = sizeIn === 0n ? 0 : Number((flashloanFee * 10_000n) / sizeIn);
-  const netSpreadBps = grossSpreadBps - slippageBps - estimatedGasBps - flashloanFeeBps;
+  const flashloanFeeBpsApplied = sizeIn === 0n ? 0 : Math.floor((Number(sizeIn) * flashloanFeeBps) / 10_000);
+  const netSpreadBps = grossSpreadBps - slippageBps - estimatedGasBps - flashloanFeeBpsApplied;
+  const flashloanFee = (sizeIn * BigInt(flashloanFeeBps)) / 10_000n;
 
   if (netSpreadBps <= 0) return null;
 
@@ -179,7 +180,6 @@ function evaluateSize(args: EvaluateArgs): Opportunity | null {
     flashloanFee,
     netSpreadBps,
     states: { buy: cheapState, sell: expensiveState },
-    computedAt: Date.now(),
   };
 }
 
