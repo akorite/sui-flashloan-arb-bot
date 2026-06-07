@@ -50,14 +50,20 @@ export function borrowFlashloan(
     ],
     typeArguments: [config.borrowCoinType],
   });
+  // NAVI's loan returns a (Balance<T>, Receipt) tuple. The Sui SDK's
+  // TransactionResult is a Proxy that supports tuple-like destructuring
+  // at runtime, but the static type is a single Result intersected
+  // with an array of NestedResult. We index it directly to get the
+  // Balance (index 0) and the Receipt (index 1).
   const balance = result[0] as TransactionObjectArgument;
+  const receipt = result[1] as unknown as TransactionResult;
   // Wrap the Balance<T> into a Coin<T> so the swap path can consume it.
   const coin = tx.moveCall({
     target: '0x2::coin::from_balance',
     arguments: [balance],
     typeArguments: [config.borrowCoinType],
   });
-  return { coin, receipt: result };
+  return { coin, receipt };
 }
 
 export function repayFlashloan(
